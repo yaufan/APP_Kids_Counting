@@ -68,5 +68,5 @@
 
 ## 目前的狀態（2026-11-15）
 - 0.1.0 做好了，**還沒發布**：本機的分析、全部測試、完整流程（手機和平板）、示範影片都過了，commit 在 `claude/relaxed-albattani-6mbwpz` 分支。
-- GitHub 專案 `APP_Kids_Counting` 可能還沒建；建好以後推工作分支，再照 skill `release-kids-app` 問使用者能不能推 `main`（第一次推 main 會跑 App 和 Release，各約 7～20 分鐘；Secrets 要先放好）。
+- GitHub 專案 2026-11-15 建好了，工作分支已推上去；照 skill `release-kids-app` 問使用者能不能推 `main`（第一次推 main 會跑 App 和 Release，各約 7～20 分鐘；Secrets 要先放好）。
 - 還沒在真手機上試過：TTS 念數字和量詞（「兩隻小雞」「七顆蛋」）、念的速度和數數的節奏、拖東西的手感、聲音好不好聽和大小（做的時候沒辦法用耳朵聽）、木刻刀痕在小螢幕上會不會讓小朋友分心、平板上放大後的樣子。
