@@ -6,9 +6,12 @@ import 'package:counting_farm/core/content.dart';
 import 'package:counting_farm/core/game.dart';
 import 'package:counting_farm/core/providers.dart';
 import 'package:counting_farm/core/sounds.dart';
+import 'package:counting_farm/core/voice.dart';
 import 'package:counting_farm/features/eggs/fill_view.dart';
+import 'package:counting_farm/features/garden/garden_views.dart';
 import 'package:counting_farm/features/parent/parent_gate.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'helpers.dart';
@@ -67,6 +70,146 @@ void main() {
     await app.settle(400);
     expect(app.game.log(app.now).seconds, lessThan(10), reason: 'two minutes away are not two minutes played');
     await app.end();
+  });
+
+  void hide(WidgetTester tester) {
+    for (final s in [AppLifecycleState.inactive, AppLifecycleState.hidden, AppLifecycleState.paused]) {
+      tester.binding.handleAppLifecycleStateChanged(s);
+    }
+  }
+
+  void show(WidgetTester tester) {
+    for (final s in [AppLifecycleState.hidden, AppLifecycleState.inactive, AppLifecycleState.resumed]) {
+      tester.binding.handleAppLifecycleStateChanged(s);
+    }
+  }
+
+  testWidgets('time in the background is not the child\'s play time, and a clock moved back gives none', (tester) async {
+    final app = await TestApp.start(tester);
+    app.now = app.now.add(const Duration(minutes: 10));
+    await app.settle(2600);
+    hide(tester);
+    app.now = app.now.add(const Duration(minutes: 8));
+    await app.settle(2600);
+    show(tester);
+    await app.settle(2600);
+    expect(app.location, '/', reason: '10 of the 15 minutes played; 8 in the background are not play');
+    app.now = app.now.subtract(const Duration(hours: 1));
+    await app.settle(2600);
+    expect(app.location, '/');
+    app.now = app.now.add(const Duration(minutes: 6));
+    await app.settle(2600);
+    expect(app.location, '/rest', reason: '16 minutes played: the clock moved back an hour gave no extra hour');
+    await app.end();
+  });
+
+  testWidgets('a clock moved back while the app is away gives no extra time either', (tester) async {
+    final app = await TestApp.start(tester);
+    app.now = app.now.add(const Duration(minutes: 12));
+    await app.settle(2600);
+    hide(tester);
+    app.now = app.now.subtract(const Duration(hours: 2));
+    show(tester);
+    await app.settle(2600);
+    expect(app.location, '/');
+    app.now = app.now.add(const Duration(minutes: 4));
+    await app.settle(2600);
+    expect(app.location, '/rest', reason: '12 + 4 minutes played');
+    await app.end();
+  });
+
+  testWidgets('the next place\'s round is finished first too (the place left behind does not end it)', (tester) async {
+    final app = await TestApp.start(tester, game: const Game(settings: Settings(cards: false)), at: '/chicks');
+    await app.settle(600);
+    await playRound(app);
+    await app.tapLabel(Strings.goTo(Place.eggs), ms: 1200);
+    await app.settle(1200);
+    expect(app.location, '/eggs');
+    expect(find.byKey(const ValueKey('playing')), findsOneWidget);
+    app.now = app.now.add(const Duration(minutes: 15, seconds: 10));
+    await app.settle(2600);
+    expect(app.location, '/eggs', reason: '撿雞蛋\'s round is being played');
+    app.now = app.now.add(const Duration(minutes: 1));
+    await app.settle(2600);
+    expect(app.location, '/rest');
+    await app.end();
+  });
+
+  testWidgets('阿嬤\'s help never sends a pumpkin or a duck again after the child did it', (tester) async {
+    final app = await TestApp.start(tester, at: '/garden');
+    await app.settle(600);
+    await playerFor(app).play();
+    expect(find.byType(PumpkinView), findsOneWidget);
+    Future<void> tapQuick(String key) async {
+      await tester.tap(find.byKey(ValueKey(key)), warnIfMissed: false);
+      await tester.pump(const Duration(milliseconds: 60));
+    }
+
+    // Three misses: 阿嬤 will put the small one up herself…
+    for (var i = 0; i < 3; i++) {
+      await tapQuick('pumpkin-2');
+    }
+    // …but the child is quicker and puts all three up.
+    for (var s = 0; s < 3; s++) {
+      await tapQuick('pumpkin-$s');
+    }
+    await app.settle(1500);
+    expect(app.voice.said.where((l) => Strings.pumpkinWords.contains(l)).length, 2, reason: '小的, 中的 once each (大的 ends it)');
+    await app.settle(2400);
+    expect(find.byType(DucksView), findsOneWidget);
+    final n = tester.widget<DucksView>(find.byType(DucksView)).task.n;
+    for (var i = 0; i < 3; i++) {
+      await tapQuick('duck-$n');
+    }
+    await tapQuick('duck-1');
+    await tapQuick('duck-2');
+    await app.settle(1500);
+    expect(find.byKey(const ValueKey('tile-2-on')), findsOneWidget, reason: 'duck 2 stays over the bridge');
+    expect(app.voice.said.where((l) => l == Strings.duckGo(1)).length, 1);
+    await app.end();
+  });
+
+  testWidgets('the chicks on the farm are counted only as far as the child counts', (tester) async {
+    for (final (level, lined) in [(Level.small, 5), (Level.big, 8)]) {
+      final app = await TestApp.start(tester, game: Game(settings: Settings(level: level), farm: const Farm(chicks: 8)));
+      await tester.tap(find.byKey(const ValueKey('chick-sign')));
+      await app.settle(500);
+      expect(find.byKey(ValueKey('parade-${lined - 1}')), findsOneWidget);
+      expect(find.byKey(ValueKey('parade-$lined')), findsNothing, reason: '$level: lined up to $lined');
+      for (var i = 0; i < lined; i++) {
+        await tester.tap(find.byKey(ValueKey('parade-$i')));
+        await app.settle(200);
+      }
+      expect(app.voice.said.last, level == Level.small ? Strings.manyChicks(5) : Strings.chicksCounted(8));
+      await app.end();
+    }
+  });
+
+  test('a line asked for while the voice is still setting up is said, and nothing after a stop', () async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    const channel = MethodChannel('flutter_tts');
+    final calls = <String>[];
+    final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      calls.add(call.method == 'speak' ? 'speak:${call.arguments}' : call.method);
+      // The phone's speech engine takes a while to start.
+      if (call.method == 'awaitSpeakCompletion') await Future<void>.delayed(const Duration(milliseconds: 80));
+      return 1;
+    });
+    addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+    final voice = SystemVoice();
+    final hello = voice.say('歡迎');
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+    final next = voice.say('每隻小雞');
+    await Future.wait([hello, next]);
+    final spoken = [for (final c in calls) if (c.startsWith('speak:')) c];
+    expect(spoken, ['speak:每隻小雞'], reason: 'the newer line, not cut off by the hello');
+    expect(calls.indexOf('setLanguage'), lessThan(calls.indexOf('speak:每隻小雞')), reason: 'in Mandarin');
+    calls.clear();
+    final left = voice.say('一共');
+    await voice.stop();
+    await left;
+    expect(calls.where((c) => c.startsWith('speak:')), isEmpty, reason: 'the screen was left before it was said');
   });
 
   testWidgets('a round being played is finished first, at most a minute more', (tester) async {

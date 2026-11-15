@@ -11,29 +11,39 @@ abstract interface class Voice {
 
 class SystemVoice implements Voice {
   FlutterTts? _tts;
+  Future<FlutterTts>? _setUp;
   double? _rate;
 
-  Future<FlutterTts> _engine() async {
-    final existing = _tts;
-    if (existing != null) return existing;
-    final tts = _tts = FlutterTts();
-    await tts.awaitSpeakCompletion(true);
-    await tts.setLanguage('zh-TW');
-    await tts.setPitch(1.15);
-    return tts;
-  }
+  /// Counts the lines asked for (and the stops): only the newest is said.
+  var _turn = 0;
+
+  /// The engine, set up once. Every line waits for the whole set-up, so a
+  /// line asked for while the first one (the farm's hello) is still setting
+  /// up is not said in the wrong language and then cut off by the first
+  /// one's late stop(): the newer line is the one that is said.
+  Future<FlutterTts> _engine() => _setUp ??= () async {
+        final tts = _tts = FlutterTts();
+        await tts.awaitSpeakCompletion(true);
+        await tts.setLanguage('zh-TW');
+        await tts.setPitch(1.15);
+        return tts;
+      }();
 
   @override
   Future<void> say(String zh, {bool slow = false}) async {
+    final turn = ++_turn;
     try {
       final tts = await _engine();
+      if (turn != _turn) return;
       await tts.stop();
       final rate = slow ? 0.32 : 0.45;
       if (rate != _rate) {
         _rate = rate;
         await tts.setSpeechRate(rate);
       }
-      if (zh.isNotEmpty) await tts.speak(zh);
+      // A newer line, or a screen that was left, while this one waited.
+      if (turn != _turn || zh.isEmpty) return;
+      await tts.speak(zh);
     } catch (_) {
       // No speech engine (tests, or a phone without one): the pictures and
       // the words on screen are enough.
@@ -42,6 +52,7 @@ class SystemVoice implements Voice {
 
   @override
   Future<void> stop() async {
+    _turn++;
     try {
       await _tts?.stop();
     } catch (_) {}

@@ -64,9 +64,11 @@
 - `app/lib/app/`：路由和休息時間（`app.dart`：`RestGuard`，家長模式和背景的時間不算，正在玩的一輪先玩完最多一分鐘）、顏色（`theme.dart` 的 `Inks`）、所有的字（`strings.dart`）、共用元件（`widgets.dart`：`Pressable`、`Pickable`（點或拖到哪裡放開都算放進去、只跟第一根手指、取消就回原位）、`CountTiles`、`TenFrame`、`ChoiceCard`、`DotFace`、`Later`（等語音念完）、`speak` 和 `HushOnLeave`）、`farm_layout.dart`（`design/art/farm.py` 產生）。
 - `app/lib/features/`：農場首頁（`farm/`）、每個地方共用的一輪（`place/`：`place_screen.dart`、`task_host.dart` 的 `TaskHost` 和一起數 `CountAlong`）、餵小雞和躲貓貓（`chicks/`）、裝東西（`eggs/fill_view.dart`：撿雞蛋、摘水果、去市場共用；盒子裡有幾顆）、比一比（`fruit/`）、分點心（`share/`）、規律／鴨子／南瓜（`garden/`）、多一個少一個（`market/`）、休息（`rest/`）、家長關卡和家長模式（`parent/`）。
 - 圖：`design/art/`（`kit.py` 木刻版畫畫法：刀痕用 shapely 算好、不用 clipPath、要數的東西中間不刻；`animals.py`、`food.py`、`farm.py`、`ui.py`、`icon.py`；`build.py all`、`sheet`、`fluttercheck`），約定在 `docs/art.md`。聲音：`design/sounds/make_sounds.py`（44 個檔，README 有每一個）。
-- 測試：`rules_test`（念數字、出題範圍、點點不重疊、規律只有一個答案、存檔）、`art_test`、`safety_test`、`version_test`、`screens_test`（玩的時間、背景、正在玩的一輪、換畫面時的語音、等語音念完、取消的手指和第二根手指、家長關掉的東西、過午夜的卡片、三個聲音開關、太少和太多）、`flow_test`（手機和平板、兩個難度、六個地方，截圖 31 張）、`demo/demo_video_test.dart`（`--dart-define=DEMO=true`，再 `python3 tools/demo_audio.py`）。`test/play.dart` 是測試和示範影片共用的「小朋友怎麼玩每一題」。
+- 測試：`rules_test`（念數字、出題範圍、點點不重疊、規律只有一個答案、存檔）、`art_test`、`safety_test`、`version_test`、`screens_test`（玩的時間、背景、正在玩的一輪、換畫面時的語音、等語音念完、取消的手指和第二根手指、家長關掉的東西、過午夜的卡片、三個聲音開關、太少和太多、背景和調回去的時鐘、換地方時正在玩的一輪、阿嬤的提示不會重複、語音準備好之前的兩句、首頁的小雞排到數到幾）、`flow_test`（手機和平板、兩個難度、六個地方，截圖 31 張）、`demo/demo_video_test.dart`（`--dart-define=DEMO=true`，再 `python3 tools/demo_audio.py`）。`test/play.dart` 是測試和示範影片共用的「小朋友怎麼玩每一題」。
 
 ## 目前的狀態（2026-11-15）
 - 0.1.0 做好了，**還沒發布**：本機的分析、全部測試、完整流程（手機和平板）、示範影片都過了，commit 在 `claude/relaxed-albattani-6mbwpz` 分支。
+- 2026-11-15 做過一次檢查程式（code review），修了：APP 放在背景的時間（不到十分鐘）被算進玩的時間；把手機時間調回去可以多玩；從一個地方按「去下一個地方」時，前一個地方把「正在玩的一輪」的旗子關掉，下一輪沒有先玩完的一分鐘（`RoundBusy` 改成記是哪個畫面在玩）；排排隊錯三次後阿嬤要幫忙時，小朋友自己先做完，南瓜會出錯、鴨子會走回來；語音一開始還在準備時，第二句會被第一句蓋掉、離開畫面後還在等的那句會念出來；首頁點小雞數的時候，排的小雞超過「數到幾」。家長關卡的測試有時候會失敗（隨機出題剛好是 10），改成只按 0。版本還是 0.1.0。
+- 要使用者決定：小小農夫「不出現數字」，但首頁木牌照設計寫「小雞 N 隻」（有數字），要不要在小小農夫改成只寫「小雞」？
 - GitHub 專案 2026-11-15 建好了，工作分支已推上去；照 skill `release-kids-app` 問使用者能不能推 `main`（第一次推 main 會跑 App 和 Release，各約 7～20 分鐘；Secrets 要先放好）。
 - 還沒在真手機上試過：TTS 念數字和量詞（「兩隻小雞」「七顆蛋」）、念的速度和數數的節奏、拖東西的手感、聲音好不好聽和大小（做的時候沒辦法用耳朵聽）、木刻刀痕在小螢幕上會不會讓小朋友分心、平板上放大後的樣子。

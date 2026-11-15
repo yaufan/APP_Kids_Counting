@@ -51,13 +51,13 @@ class _PlaceScreenState extends ConsumerState<PlaceScreen> with HushOnLeave impl
   void initState() {
     super.initState();
     _tasks = roundFor(_place, ask, random);
-    _busy.busy = true;
+    _busy.start(this);
   }
 
   @override
   void dispose() {
     _next?.cancel();
-    _busy.busy = false;
+    _busy.end(this);
     super.dispose();
   }
 
@@ -110,7 +110,7 @@ class _PlaceScreenState extends ConsumerState<PlaceScreen> with HushOnLeave impl
 
   void _finish() {
     record((g) => g.finished(_place, ref.read(clockProvider)()));
-    _busy.busy = false;
+    _busy.end(this);
     sfx('done');
     setState(() {
       _phase = _Phase.cheer;
@@ -152,7 +152,7 @@ class _PlaceScreenState extends ConsumerState<PlaceScreen> with HushOnLeave impl
       _round++;
       _phase = _Phase.playing;
     });
-    _busy.busy = true;
+    _busy.start(this);
   }
 
   Place? get _nextPlace {

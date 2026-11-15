@@ -56,9 +56,9 @@ void main() {
     await app.settle(800);
     expect(find.textContaining('加'), findsOneWidget);
     expect(find.byKey(const ValueKey('gate-key-1')), findsOneWidget);
-    for (var i = 0; i < 3; i++) {
-      await tester.tap(find.byKey(const ValueKey('gate-key-1')));
-      await app.settle(100);
+    // Only 0s: never a right answer (the sums are 6 to 18), so each one or
+    // two keys are a miss. (1 then 0 was 10, right one time in ten.)
+    for (var i = 0; i < 6 && find.textContaining('請等').evaluate().isEmpty; i++) {
       await tester.tap(find.byKey(const ValueKey('gate-key-0')));
       await app.settle(100);
     }

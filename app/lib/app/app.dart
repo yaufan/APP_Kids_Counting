@@ -75,7 +75,8 @@ class FarmApp extends ConsumerWidget {
 /// parent says so) play can go on. A round being played is finished first
 /// (at most a minute more). Away from the app for ten minutes counts as a
 /// rest; time in parent mode or in the background is not the child's play
-/// time. It also counts today's minutes for parent mode.
+/// time, and a phone clock moved back gives no extra time. It also counts
+/// today's minutes for parent mode.
 class RestGuard extends ConsumerStatefulWidget {
   const RestGuard({super.key, required this.child});
 
@@ -101,6 +102,9 @@ class _RestGuardState extends ConsumerState<RestGuard> {
 
   /// When parent mode was opened (its time is given back to the child).
   DateTime? _parentSince;
+
+  /// The phone's clock at the last check (to see it moved back).
+  DateTime? _last;
   var _unsaved = 0;
 
   @override
@@ -116,10 +120,34 @@ class _RestGuardState extends ConsumerState<RestGuard> {
       onShow: () {
         final away = _away;
         _away = null;
-        if (away != null && ref.read(clockProvider)().difference(away) >= RestGuard.awayIsRest) ref.read(sessionStartProvider.notifier).restart();
+        if (away != null) _back(away);
         _check();
       },
     );
+  }
+
+  /// Back from the background, gone since [away]: ten minutes or more is a
+  /// rest (a new sitting); less is not the child's play time either, so the
+  /// sitting goes on where it was (a clock moved back meanwhile makes
+  /// [gone] negative and takes that back too).
+  void _back(DateTime away) {
+    final now = ref.read(clockProvider)();
+    final gone = now.difference(away);
+    _last = now;
+    if (gone >= RestGuard.awayIsRest) {
+      ref.read(sessionStartProvider.notifier).restart();
+      if (_parentSince != null) _parentSince = now;
+      return;
+    }
+    _moveSitting(gone);
+  }
+
+  /// Moves the sitting (and parent mode's start, so its time is not given
+  /// back twice) by [d].
+  void _moveSitting(Duration d) {
+    ref.read(sessionStartProvider.notifier).shift(d);
+    final p = _parentSince;
+    if (p != null) _parentSince = p.add(d);
   }
 
   @override
@@ -137,13 +165,18 @@ class _RestGuardState extends ConsumerState<RestGuard> {
   }
 
   void _check() {
-    if (!mounted) return;
+    // Nothing while the app is out of sight (its timer can go on in the
+    // background): that time is not played, and it is given back on return.
+    if (!mounted || _away != null) return;
     final now = ref.read(clockProvider)();
+    // The phone's clock moved back: the sitting moves back with it.
+    final last = _last;
+    _last = now;
+    if (last != null && now.isBefore(last)) _moveSitting(now.difference(last));
     final g = ref.read(gameProvider);
     final router = ref.read(routerProvider);
     final path = router.state.matchedLocation;
-    // Not while the app is out of sight (its timer can go on in the background).
-    final playing = _away == null && !path.startsWith('/parent') && path != '/rest';
+    final playing = !path.startsWith('/parent') && path != '/rest';
     if (playing) {
       _unsaved += RestGuard.check.inSeconds;
       if (_unsaved >= RestGuard.saveEvery) _save();
@@ -155,7 +188,8 @@ class _RestGuardState extends ConsumerState<RestGuard> {
     final parentSince = _parentSince;
     if (parentSince != null) {
       _parentSince = null;
-      ref.read(sessionStartProvider.notifier).pause(now.difference(parentSince));
+      final d = now.difference(parentSince);
+      if (!d.isNegative) ref.read(sessionStartProvider.notifier).shift(d);
     }
     if (g.restSince != null) {
       if (g.resting(now)) {

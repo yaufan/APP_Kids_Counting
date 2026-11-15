@@ -12,7 +12,7 @@ abstract final class Strings {
   static String chickSign(int n) => '小雞 $n 隻';
   static const countChicks = '小雞排好隊了，一隻一隻點著數！';
   static String chicksCounted(int n) => '一共${Say.units(n, '隻')}小雞！';
-  static const manyChicks = '還有好多好多隻，數到十了，好厲害！';
+  static String manyChicks(int counted) => '還有好多好多隻，數到${Say.count(counted)}了，好厲害！';
   static const moo = '哞～我是牛牛。';
   static const lockedPlace = '這個地方在完整版裡，請爸爸媽媽看看。';
   static const parent = '家長';

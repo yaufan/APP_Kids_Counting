@@ -47,6 +47,7 @@ void main() {
           Strings.filled(n, Things.egg, null),
           Strings.all(n, Things.egg),
           Strings.chicksCounted(n),
+          Strings.manyChicks(n),
           Strings.duckGo(n),
           Strings.ducksDone(n),
           Strings.moreAsk(n),

@@ -79,7 +79,7 @@ class _FarmScreenState extends ConsumerState<FarmScreen> with HushOnLeave {
     }
     sfx(ref, 'count_all');
     ref.read(gameProvider.notifier).change((g) => g.count(shown));
-    _say(all > shown ? Strings.manyChicks : Strings.chicksCounted(all));
+    _say(all > shown ? Strings.manyChicks(shown) : Strings.chicksCounted(all));
   }
 
   @override
@@ -224,7 +224,8 @@ class _FarmScreenState extends ConsumerState<FarmScreen> with HushOnLeave {
 
   Widget _paradePanel(Game g) {
     final all = g.farm.chicks;
-    final shown = math.min(all, 10);
+    // As far as the child counts (小小農夫 5, or what a parent set).
+    final shown = math.min(all, g.settings.maxN);
     final big = g.settings.level != Level.small;
     return Panel(
       child: Column(mainAxisSize: MainAxisSize.min, children: [

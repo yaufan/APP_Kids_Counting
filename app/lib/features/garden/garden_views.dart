@@ -244,8 +244,10 @@ class _DucksViewState extends State<DucksView> with Hints {
       _h.sfx('quack');
       final said = _h.say(Strings.duckWrong(d, want));
       if (doIt) {
+        // 阿嬤 sends the right duck over, unless the child already has.
+        _later?.cancel();
         _later = Later(const Duration(milliseconds: 800), () {
-          if (mounted) _go(want);
+          if (mounted && !_over && _crossed + 1 == want) _go(want);
         }, after: said);
       }
       return;
@@ -254,6 +256,7 @@ class _DucksViewState extends State<DucksView> with Hints {
   }
 
   void _go(int d) {
+    _later?.cancel();
     misses = 0;
     setState(() => _crossed = d);
     _h.sfx('whoosh');
@@ -370,8 +373,11 @@ class _PumpkinViewState extends State<PumpkinView> with Hints {
       _h.sfx('boing');
       final said = _h.say(Strings.pumpkinWrong);
       if (doIt) {
+        // 阿嬤 puts the right one up, unless the child already has.
+        final want = _placed;
+        _later?.cancel();
         _later = Later(const Duration(milliseconds: 800), () {
-          if (mounted) _put(_placed);
+          if (mounted && !_over && _placed == want) _put(want);
         }, after: said);
       }
       return;
@@ -380,6 +386,7 @@ class _PumpkinViewState extends State<PumpkinView> with Hints {
   }
 
   void _put(int s) {
+    _later?.cancel();
     misses = 0;
     setState(() => _placed = s + 1);
     _h.sfx('thud');
