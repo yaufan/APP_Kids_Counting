@@ -9,7 +9,9 @@ abstract final class Strings {
   // The farm (home).
   static const hello = '歡迎來到小農場！今天先去哪裡呢？';
   static const where = '今天先去哪裡呢？';
-  static String chickSign(int n) => '小雞 $n 隻';
+  /// The farm's sign. 小小農夫 sees no numerals anywhere, so the sign just
+  /// says 小雞 there (the user's choice, 2026-11-16).
+  static String chickSign(int n, {required bool numerals}) => numerals ? '小雞 $n 隻' : '小雞';
   static const countChicks = '小雞排好隊了，一隻一隻點著數！';
   static String chicksCounted(int n) => '一共${Say.units(n, '隻')}小雞！';
   static String manyChicks(int counted) => '還有好多好多隻，數到${Say.count(counted)}了，好厲害！';

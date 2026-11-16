@@ -147,10 +147,10 @@ class _FarmScreenState extends ConsumerState<FarmScreen> with HushOnLeave {
                             key: const ValueKey('chick-sign'),
                             container: true,
                             button: true,
-                            label: Strings.chickSign(g.farm.chicks),
+                            label: Strings.chickSign(g.farm.chicks, numerals: g.settings.ask.numerals),
                             excludeSemantics: true,
                             onTap: _openParade,
-                            child: Pressable(onTap: _openParade, child: WoodSign(text: Strings.chickSign(g.farm.chicks), width: 104 * b, size: 17)),
+                            child: Pressable(onTap: _openParade, child: WoodSign(text: Strings.chickSign(g.farm.chicks, numerals: g.settings.ask.numerals), width: 104 * b, size: 17)),
                           ),
                         ]),
                       ]),
@@ -229,7 +229,7 @@ class _FarmScreenState extends ConsumerState<FarmScreen> with HushOnLeave {
     final big = g.settings.level != Level.small;
     return Panel(
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Text(Strings.chickSign(all), style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700)),
+        Text(Strings.chickSign(all, numerals: g.settings.ask.numerals), style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700)),
         const SizedBox(height: 10),
         LayoutBuilder(builder: (context, box) {
           final size = math.min(64.0, box.maxWidth / 5 - 6);

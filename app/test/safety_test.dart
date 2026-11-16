@@ -46,7 +46,7 @@ void main() {
     expect(app.location, '/', reason: 'the pass is used up');
     app.go('/nowhere');
     await app.settle();
-    expect(find.text(Strings.chickSign(3)), findsOneWidget, reason: 'an unknown page is the farm');
+    expect(find.text(Strings.chickSign(3, numerals: false)), findsOneWidget, reason: 'an unknown page is the farm');
     await app.end();
   });
 

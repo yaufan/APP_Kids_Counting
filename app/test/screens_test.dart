@@ -172,6 +172,9 @@ void main() {
   testWidgets('the chicks on the farm are counted only as far as the child counts', (tester) async {
     for (final (level, lined) in [(Level.small, 5), (Level.big, 8)]) {
       final app = await TestApp.start(tester, game: Game(settings: Settings(level: level), farm: const Farm(chicks: 8)));
+      // 小小農夫 sees no numerals, not even on the farm's sign.
+      expect(find.text(level == Level.small ? '小雞' : '小雞 8 隻'), findsOneWidget);
+      expect(find.textContaining('8'), level == Level.small ? findsNothing : findsWidgets);
       await tester.tap(find.byKey(const ValueKey('chick-sign')));
       await app.settle(500);
       expect(find.byKey(ValueKey('parade-${lined - 1}')), findsOneWidget);
