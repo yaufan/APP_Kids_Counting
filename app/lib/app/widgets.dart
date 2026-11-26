@@ -102,6 +102,25 @@ class Later {
 
 void sfx(WidgetRef ref, String name) => ref.read(soundsProvider).play(name);
 
+/// The phone's back key (or back gesture) never closes the app, which would
+/// lose the round: it does what the screen's own home button does
+/// ([onBack]), or nothing at all on the farm and at the rest.
+class BackKey extends StatelessWidget {
+  const BackKey({super.key, this.onBack, required this.child});
+
+  final VoidCallback? onBack;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) onBack?.call();
+        },
+        child: child,
+      );
+}
+
 /// Shrinks a little while pressed and fires when the finger lifts on it
 /// (raw pointer events: a touch counts at once, no gesture to wait for).
 /// Only the first finger counts; a cancelled touch does nothing.

@@ -130,8 +130,8 @@ abstract final class Strings {
   static const callParent = '請爸爸媽媽來';
   static const parentGateTitle = '家長確認';
   static String gateQuestion(String a, String b) => '$a 加 $b 等於多少？';
-  static String gateWait(int s) => '請等 $s 秒再試';
-  static const gateRules = '答錯三次要等一分鐘';
+  static String gateWait(int s) => s > 60 ? '請等 ${(s + 59) ~/ 60} 分鐘再試' : '請等 $s 秒再試';
+  static const gateRules = '答錯三次要等一分鐘，再錯會等更久';
   static const wrongAnswer = '不對喔，換一題';
   static const cancel = '取消';
   static const backspace = '刪掉';
@@ -146,7 +146,7 @@ abstract final class Strings {
   static const countNote = '可以和難度分開改，例如 3 歲但已經很會數。數到 20 在 0.2 版。';
   static const playTime = '每次玩多久';
   static String minutes(int m) => '$m 分';
-  static const playTimeNote = '時間到了農場黃昏、休息，要家長解開或等一小時。家長模式裡和 APP 放在背景的時間不算。';
+  static const playTimeNote = '時間到了農場黃昏、休息，要家長解開或等一小時。家長模式、家長關卡和 APP 放在背景的時間不算；APP 關掉 10 分鐘內再打開會接著算。';
   static const resting = '現在在休息時間。';
   static const playOn = '讓小朋友繼續玩';
   static const placesTitle = '要玩哪些地方';

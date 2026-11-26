@@ -36,12 +36,17 @@ class GameNotifier extends Notifier<Game> {
   void settings(Settings Function(Settings s) f) => change((g) => g.withSettings(f(g.settings)));
 }
 
-/// When this sitting started (reset when a parent lets play go on).
+/// When this sitting started (reset when a parent lets play go on). The app
+/// closed and opened again within ten minutes goes on with the sitting it
+/// saved ([Sitting]).
 final sessionStartProvider = NotifierProvider<SessionStart, DateTime>(SessionStart.new);
 
 class SessionStart extends Notifier<DateTime> {
   @override
-  DateTime build() => ref.read(clockProvider)();
+  DateTime build() {
+    final now = ref.read(clockProvider)();
+    return ref.read(gameProvider).sitting?.startAt(now) ?? now;
+  }
 
   void restart() => state = ref.read(clockProvider)();
 
