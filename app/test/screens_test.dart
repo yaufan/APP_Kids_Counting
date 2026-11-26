@@ -9,6 +9,7 @@ import 'package:counting_farm/core/sounds.dart';
 import 'package:counting_farm/core/voice.dart';
 import 'package:counting_farm/features/eggs/fill_view.dart';
 import 'package:counting_farm/features/garden/garden_views.dart';
+import 'package:counting_farm/features/market/change_view.dart';
 import 'package:counting_farm/features/parent/parent_gate.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -16,6 +17,34 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'helpers.dart';
 import 'play.dart';
+
+/// A music player that takes as long as the test says to start a tune.
+class SlowLoop implements MusicLoop {
+  final calls = <String>[];
+  String? playing;
+  Completer<void>? loading;
+
+  @override
+  Future<void> stop() async {
+    calls.add('stop');
+    playing = null;
+  }
+
+  @override
+  Future<void> play(String file, double volume) async {
+    calls.add('play $file');
+    final c = loading = Completer<void>();
+    await c.future;
+    playing = file;
+  }
+}
+
+/// The answer to the gate's question (「七 加 五 等於多少？」).
+int _answer(String q) {
+  const digits = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+  final ns = [for (final ch in q.split('')) if (digits.contains(ch)) digits.indexOf(ch)];
+  return ns[0] + ns[1];
+}
 
 /// The lessons from the sibling apps' reviews, checked from the start: play
 /// time, the voice between screens, the first finger only, what a parent
@@ -393,5 +422,295 @@ void main() {
     expect(app.sounds.played, contains('swish'));
     expect(app.game.counted[t.target], 1);
     await app.end();
+  });
+
+  group('round 1 fixes', () {
+    /// Whether the app asked the phone to close it (the back key's default).
+    Future<bool> back(TestApp app) async {
+      var closed = false;
+      app.tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+        if (call.method == 'SystemNavigator.pop') closed = true;
+        return null;
+      });
+      await app.tester.binding.handlePopRoute();
+      await app.settle(600);
+      app.tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null);
+      return closed;
+    }
+
+    testWidgets('the back key never closes the app: a place goes to the farm, the farm and the rest stay', (tester) async {
+      final app = await TestApp.start(tester, at: '/eggs');
+      await app.settle(800);
+      expect(await back(app), isFalse);
+      expect(app.location, '/', reason: 'like the home button');
+      expect(await back(app), isFalse, reason: 'on the farm it does nothing');
+      expect(app.location, '/');
+      ParentPass.grant();
+      app.go('/parent');
+      await app.settle();
+      expect(await back(app), isFalse);
+      expect(app.location, '/', reason: 'parent mode goes to the farm');
+      app.change((g) => g.rest(app.now));
+      await app.settle(2600);
+      expect(app.location, '/rest');
+      expect(await back(app), isFalse);
+      expect(app.location, '/rest', reason: 'the rest stays');
+      await app.end();
+    });
+
+    testWidgets('the back key on the parent gate only closes the gate', (tester) async {
+      final app = await TestApp.start(tester);
+      await app.tapLabel(Strings.parent, ms: 800);
+      expect(find.byKey(const ValueKey('gate-key-1')), findsOneWidget);
+      expect(await back(app), isFalse);
+      await app.settle(1200);
+      expect(find.byKey(const ValueKey('gate-key-1')), findsNothing);
+      expect(app.location, '/');
+      await app.end();
+    });
+
+    testWidgets('closed and opened again within ten minutes, the sitting goes on', (tester) async {
+      final first = await TestApp.start(tester);
+      first.now = first.now.add(const Duration(minutes: 12));
+      await first.settle(2600);
+      hide(tester);
+      await first.settle();
+      final saved = Game.fromJson(first.store.saved);
+      expect(saved.sitting, isNotNull);
+      expect(saved.sitting!.used.inMinutes, 12);
+      final closedAt = first.now;
+      // (Frames only come with the app in sight: closed after it is back.)
+      show(tester);
+      await first.end();
+      // Opened again five minutes later: 3 of the 15 minutes are left.
+      final app = await TestApp.start(tester, game: saved, now: closedAt.add(const Duration(minutes: 5)));
+      app.now = app.now.add(const Duration(minutes: 2));
+      await app.settle(2600);
+      expect(app.location, '/');
+      app.now = app.now.add(const Duration(minutes: 2));
+      await app.settle(2600);
+      expect(app.location, '/rest', reason: 'closing the app gave no new 15 minutes');
+      await app.end();
+    });
+
+    testWidgets('a sitting saved before going away goes on only within ten minutes', (tester) async {
+      final t0 = DateTime(2026, 11, 15, 10);
+      // Played 12 minutes, closed 4 minutes ago: 3 minutes are left.
+      final soon = await TestApp.start(tester, game: Game(sitting: Sitting(const Duration(minutes: 12), t0.subtract(const Duration(minutes: 4)))));
+      soon.now = soon.now.add(const Duration(minutes: 2));
+      await soon.settle(2600);
+      expect(soon.location, '/');
+      soon.now = soon.now.add(const Duration(minutes: 2));
+      await soon.settle(2600);
+      expect(soon.location, '/rest', reason: '12 + 4 minutes: the closed time did not count, the minutes played did');
+      await soon.end();
+      // Closed eleven minutes ago: a new sitting.
+      final late = await TestApp.start(tester, game: Game(sitting: Sitting(const Duration(minutes: 14), t0.subtract(const Duration(minutes: 11)))));
+      late.now = late.now.add(const Duration(minutes: 10));
+      await late.settle(2600);
+      expect(late.location, '/', reason: 'ten minutes away was a rest');
+      await late.end();
+      // A clock moved back while it was closed gives no extra time.
+      final back = await TestApp.start(tester, game: Game(sitting: Sitting(const Duration(minutes: 14), t0.add(const Duration(hours: 2)))));
+      back.now = back.now.add(const Duration(minutes: 1, seconds: 10));
+      await back.settle(2600);
+      expect(back.location, '/rest');
+      await back.end();
+    });
+
+    testWidgets('the rest begins and ends a sitting: nothing to go on with after it', (tester) async {
+      final app = await TestApp.start(tester);
+      app.now = app.now.add(const Duration(minutes: 16));
+      await app.settle(2600);
+      expect(app.location, '/rest');
+      expect(app.game.sitting, isNull);
+      hide(tester);
+      expect(Game.fromJson(app.store.saved).sitting, isNull, reason: 'no sitting is saved while resting');
+      show(tester);
+      await app.end();
+    });
+
+    testWidgets('parent mode left in the background is closed: the farm, and the gate again', (tester) async {
+      final app = await TestApp.start(tester);
+      ParentPass.grant();
+      app.go('/parent');
+      await app.settle();
+      expect(app.location, '/parent');
+      hide(tester);
+      await app.settle();
+      show(tester);
+      await app.settle();
+      expect(app.location, '/');
+      app.go('/parent');
+      await app.settle();
+      expect(app.location, '/', reason: 'the pass was used up');
+      await app.end();
+    });
+
+    testWidgets('the parent gate closes when the app goes away, and its time is not play time', (tester) async {
+      final app = await TestApp.start(tester);
+      app.now = app.now.add(const Duration(minutes: 10));
+      await app.settle(2600);
+      await app.tapLabel(Strings.parent, ms: 800);
+      expect(find.byKey(const ValueKey('gate-key-1')), findsOneWidget);
+      app.now = app.now.add(const Duration(minutes: 20));
+      await app.settle(2600);
+      expect(app.location, '/', reason: 'twenty minutes on the gate are not play time');
+      hide(tester);
+      await app.settle();
+      show(tester);
+      await app.settle(1200);
+      expect(find.byKey(const ValueKey('gate-key-1')), findsNothing, reason: 'a child finds the farm');
+      app.now = app.now.add(const Duration(minutes: 4));
+      await app.settle(2600);
+      expect(app.location, '/');
+      app.now = app.now.add(const Duration(minutes: 2));
+      await app.settle(2600);
+      expect(app.location, '/rest', reason: '10 + 6 minutes played');
+      await app.end();
+    });
+
+    testWidgets('the gate and parent mode close by themselves after five minutes without a touch', (tester) async {
+      final app = await TestApp.start(tester);
+      await app.tapLabel(Strings.parent, ms: 800);
+      expect(find.byKey(const ValueKey('gate-key-1')), findsOneWidget);
+      await tester.pump(const Duration(minutes: 4));
+      await tester.tap(find.byKey(const ValueKey('gate-key-0')));
+      await tester.pump(const Duration(minutes: 4));
+      expect(find.byKey(const ValueKey('gate-key-1')), findsOneWidget, reason: 'a touch starts the five minutes again');
+      await tester.pump(const Duration(minutes: 1, seconds: 5));
+      await app.settle(1200);
+      expect(find.byKey(const ValueKey('gate-key-1')), findsNothing);
+      ParentPass.grant();
+      app.go('/parent');
+      await app.settle();
+      await tester.pump(const Duration(minutes: 5, seconds: 5));
+      await app.settle();
+      expect(app.location, '/');
+      await app.end();
+    });
+
+    testWidgets('the rest\'s gate lets play go on but does not open parent mode', (tester) async {
+      final app = await TestApp.start(tester);
+      app.change((g) => g.rest(app.now));
+      await app.settle(2600);
+      await tester.tap(find.bySemanticsLabel(Strings.parent).last, warnIfMissed: false);
+      await app.settle(800);
+      expect(find.byType(ParentGatePage), findsOneWidget);
+      // The gate's question is on screen: answer it.
+      final q = tester.widgetList<Text>(find.textContaining('加')).first.data!;
+      final answer = _answer(q);
+      for (final d in '$answer'.split('')) {
+        await tester.tap(find.byKey(ValueKey('gate-key-$d')));
+        await app.settle(100);
+      }
+      await app.settle(2600);
+      expect(app.location, '/');
+      app.go('/parent');
+      await app.settle();
+      expect(app.location, '/', reason: 'no pass left over');
+      await app.end();
+    });
+
+    testWidgets('the gate\'s wait grows (1, 5, 15 minutes), is kept, and a clock moved back does not lock it for ever', (tester) async {
+      var lock = const GateLock();
+      final t = DateTime(2026, 11, 15, 10);
+      for (var i = 0; i < 3; i++) {
+        lock = lock.miss(t);
+      }
+      expect(lock.locked(t), isTrue);
+      expect(lock.left(t), const Duration(minutes: 1));
+      expect(lock.locked(t.add(const Duration(minutes: 1))), isFalse);
+      for (var i = 0; i < 3; i++) {
+        lock = lock.miss(t.add(const Duration(minutes: 2)));
+      }
+      expect(lock.left(t.add(const Duration(minutes: 2))), const Duration(minutes: 5));
+      for (var i = 0; i < 3; i++) {
+        lock = lock.miss(t.add(const Duration(minutes: 10)));
+      }
+      expect(lock.left(t.add(const Duration(minutes: 10))), const Duration(minutes: 15));
+      for (var i = 0; i < 3; i++) {
+        lock = lock.miss(t.add(const Duration(minutes: 30)));
+      }
+      expect(lock.left(t.add(const Duration(minutes: 30))), const Duration(minutes: 15), reason: 'never longer than 15');
+      expect(lock.locked(t.add(const Duration(minutes: 20))), isFalse, reason: 'a clock moved back is no wait');
+      expect(GateLock.fromJson(lock.toJson()).left(t.add(const Duration(minutes: 31))), const Duration(minutes: 14));
+
+      // Kept on the phone: closing the app does not end the wait.
+      final app = await TestApp.start(tester);
+      await app.tapLabel(Strings.parent, ms: 800);
+      for (var i = 0; i < 6 && find.textContaining('請等').evaluate().isEmpty; i++) {
+        await tester.tap(find.byKey(const ValueKey('gate-key-0')));
+        await app.settle(100);
+      }
+      expect(find.textContaining('請等'), findsOneWidget);
+      final saved = Game.fromJson(app.store.saved);
+      expect(saved.gate.locked(app.now), isTrue);
+      await app.end();
+      final again = await TestApp.start(tester, game: saved);
+      await again.tapLabel(Strings.parent, ms: 800);
+      expect(find.textContaining('請等'), findsOneWidget, reason: 'still waiting after the app was closed');
+      await again.end();
+    });
+
+    testWidgets('a quick change of music never plays the wrong tune or plays on after a stop', (tester) async {
+      final loop = SlowLoop();
+      final sounds = SystemSounds(loop: loop);
+      final owner = Object();
+      sounds.hold(owner, Music.farm);
+      await tester.pump();
+      expect(loop.calls, ['stop', 'play music_farm']);
+      sounds.hold(owner, Music.coop);
+      await tester.pump();
+      sounds.hold(owner, null);
+      await tester.pump();
+      loop.loading!.complete();
+      await tester.pump();
+      expect(loop.playing, isNull, reason: 'stopped after the start that was loading, not before it');
+      expect(loop.calls, ['stop', 'play music_farm', 'stop']);
+      sounds.hold(owner, Music.coop);
+      await tester.pump();
+      loop.loading!.complete();
+      await tester.pump();
+      expect(loop.playing, 'music_coop');
+      sounds.dispose();
+    });
+
+    for (final level in [Level.small, Level.big]) {
+      testWidgets('on a short phone (360 × 640) the egg box and the market truck are not squashed (${level.name})', (tester) async {
+        await tester.runAsync(loadFonts);
+        tester.view.padding = const FakeViewPadding(top: 72, bottom: 144);
+        final app = await TestApp.start(tester, game: Game(settings: Settings(level: level, countTo: 10)), size: const Size(1080, 1920), ratio: 3, at: '/eggs');
+        final p = playerFor(app);
+        for (var i = 0; i < 3 && p.kind != 'howmany'; i++) {
+          await p.play();
+        }
+        expect(p.kind, 'howmany');
+        final frame = tester.getRect(find.byType(TenFrame));
+        final rows = tester.widget<TenFrame>(find.byType(TenFrame)).rows;
+        expect(frame.height / frame.width, closeTo((16 + 60 * rows) / 300, .01), reason: 'shrunk whole, not squashed');
+        for (final c in find.byType(ChoiceCard).evaluate()) {
+          expect(frame.overlaps(tester.getRect(find.byWidget(c.widget))), isFalse, reason: 'the box is above the cards');
+        }
+        final hen = tester.getRect(find.byWidgetPredicate((w) => w is Art && w.path == 'animals/hen'));
+        expect(frame.top, greaterThanOrEqualTo(hen.bottom - 1));
+        await shoot(tester, 'small_phone', 'eggs_howmany_${level.name}');
+        await app.end();
+        if (level == Level.small) return;
+
+        final market = await TestApp.start(tester, game: Game(settings: Settings(level: level, sentences: true)), size: const Size(1080, 1920), ratio: 3, at: '/market');
+        final m = playerFor(market);
+        for (var i = 0; i < 3 && !(m.kind == 'change' && tester.widget<ChangeView>(find.byType(ChangeView)).task.delta < 0); i++) {
+          await m.play();
+        }
+        await tester.tap(find.byKey(const ValueKey('truck-0')));
+        await market.settle(800);
+        final truck = tester.getRect(find.byWidgetPredicate((w) => w is Art && w.path == 'farm/truck'));
+        final sold = tester.getRect(find.descendant(of: find.byType(PopIn), matching: find.byType(ThingPic)).first);
+        expect(sold.bottom, lessThanOrEqualTo(truck.top + 1), reason: 'the melon handed to 阿伯 is not on the truck');
+        await shoot(tester, 'small_phone', 'market_fewer');
+        await market.end();
+      });
+    }
   });
 }
