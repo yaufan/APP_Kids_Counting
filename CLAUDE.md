@@ -60,14 +60,22 @@
 - 示範影片（每一版都要給使用者）：在 `app/` 裡 `flutter test test/demo/demo_video_test.dart --dart-define=DEMO=true`（約 5～10 分鐘，要 ffmpeg），再在專案根目錄 `python3 tools/demo_audio.py` 把背景音樂和音效混進去。輸出 `app/build/demo/demo.mp4`；`chapters.txt` 是每一段開始的格數（每秒 10 格），用來剪新功能的片段。
 
 ## 程式在哪裡
-- `app/lib/core/`：內容的名字（`content.dart`：難度 `Level`、六個地方 `Place`、要數的東西和量詞 `Things`、動物、30 張回真實生活卡）、出題（`rounds.dart`：每個地方一輪的題目、每個難度的範圍、點點 `dotLayout` 和十格框的位置、比一比的差距、剛好分完、規律的答案只有一個、多一個少一個）、怎麼念數字（`speech.dart`：數數念「二」、數量念「兩」、量詞、算式只顯示不念；語音永遠拿不到阿拉伯數字）、存檔的東西（`game.dart`：設定、每個數量數過幾次、一眼看出、分點心、規律、農場長大、卡片輪流、農場日記、今天、休息）、聲音（`sounds.dart`，數數的音 `count_1`～`count_10`）、語音、存檔、`providers.dart`（含一輪還在玩的旗子 `roundBusyProvider`）。
-- `app/lib/app/`：路由和休息時間（`app.dart`：`RestGuard`，家長模式和背景的時間不算，正在玩的一輪先玩完最多一分鐘）、顏色（`theme.dart` 的 `Inks`）、所有的字（`strings.dart`）、共用元件（`widgets.dart`：`Pressable`、`Pickable`（點或拖到哪裡放開都算放進去、只跟第一根手指、取消就回原位）、`CountTiles`、`TenFrame`、`ChoiceCard`、`DotFace`、`Later`（等語音念完）、`speak` 和 `HushOnLeave`）、`farm_layout.dart`（`design/art/farm.py` 產生）。
-- `app/lib/features/`：農場首頁（`farm/`）、每個地方共用的一輪（`place/`：`place_screen.dart`、`task_host.dart` 的 `TaskHost` 和一起數 `CountAlong`）、餵小雞和躲貓貓（`chicks/`）、裝東西（`eggs/fill_view.dart`：撿雞蛋、摘水果、去市場共用；盒子裡有幾顆）、比一比（`fruit/`）、分點心（`share/`）、規律／鴨子／南瓜（`garden/`）、多一個少一個（`market/`）、休息（`rest/`）、家長關卡和家長模式（`parent/`）。
+- `app/lib/core/`：內容的名字（`content.dart`：難度 `Level`、六個地方 `Place`、要數的東西和量詞 `Things`、動物、30 張回真實生活卡）、出題（`rounds.dart`：每個地方一輪的題目、每個難度的範圍、點點 `dotLayout` 和十格框的位置、比一比的差距、剛好分完、規律的答案只有一個、多一個少一個）、怎麼念數字（`speech.dart`：數數念「二」、數量念「兩」、量詞、算式只顯示不念；語音永遠拿不到阿拉伯數字）、存檔的東西（`game.dart`：設定、每個數量數過幾次、一眼看出、分點心、規律、農場長大、卡片輪流、農場日記、今天、休息、這次玩了多久 `Sitting`（關掉 10 分鐘內再打開接著算）、家長關卡連錯的等待 `GateLock`）、聲音（`sounds.dart`，數數的音 `count_1`～`count_10`；`soundContext` 讓聲音走媒體音量，`_switching` 讓音樂一個一個換）、語音（APP 在背景時不說）、存檔、`providers.dart`（含一輪還在玩的旗子 `roundBusyProvider`）。
+- `app/lib/app/`：路由和休息時間（`app.dart`：`RestGuard`，家長模式、家長關卡和背景的時間不算，正在玩的一輪先玩完最多一分鐘，家長模式留在背景就回農場；每個畫面包 `BackKey`，手機的返回鍵不會關掉 APP）、顏色（`theme.dart` 的 `Inks`）、所有的字（`strings.dart`）、共用元件（`widgets.dart`：`Pressable`、`Pickable`（點或拖到哪裡放開都算放進去、只跟第一根手指、取消就回原位）、`CountTiles`、`TenFrame`、`ChoiceCard`、`DotFace`、`Later`（等語音念完）、`speak` 和 `HushOnLeave`）、`farm_layout.dart`（`design/art/farm.py` 產生）。
+- `app/lib/features/`：農場首頁（`farm/`）、每個地方共用的一輪（`place/`：`place_screen.dart`、`task_host.dart` 的 `TaskHost` 和一起數 `CountAlong`）、餵小雞和躲貓貓（`chicks/`）、裝東西（`eggs/fill_view.dart`：撿雞蛋、摘水果、去市場共用；盒子裡有幾顆）、比一比（`fruit/`）、分點心（`share/`）、規律／鴨子／南瓜（`garden/`）、多一個少一個（`market/`）、休息（`rest/`）、家長關卡和家長模式（`parent/`：`ParentIdle` 5 分鐘沒碰就關上、`parentGateShowing`）。
 - 圖：`design/art/`（`kit.py` 木刻版畫畫法：刀痕用 shapely 算好、不用 clipPath、要數的東西中間不刻；`animals.py`、`food.py`、`farm.py`、`ui.py`、`icon.py`；`build.py all`、`sheet`、`fluttercheck`），約定在 `docs/art.md`。聲音：`design/sounds/make_sounds.py`（44 個檔，README 有每一個）。
-- 測試：`rules_test`（念數字、出題範圍、點點不重疊、規律只有一個答案、存檔）、`art_test`、`safety_test`、`version_test`、`screens_test`（玩的時間、背景、正在玩的一輪、換畫面時的語音、等語音念完、取消的手指和第二根手指、家長關掉的東西、過午夜的卡片、三個聲音開關、太少和太多、背景和調回去的時鐘、換地方時正在玩的一輪、阿嬤的提示不會重複、語音準備好之前的兩句、首頁的小雞排到數到幾）、`flow_test`（手機和平板、兩個難度、六個地方，截圖 31 張）、`demo/demo_video_test.dart`（`--dart-define=DEMO=true`，再 `python3 tools/demo_audio.py`）。`test/play.dart` 是測試和示範影片共用的「小朋友怎麼玩每一題」。
+- 測試：`rules_test`（念數字、出題範圍、點點不重疊、規律只有一個答案、存檔）、`art_test`、`safety_test`、`version_test`、`screens_test`（玩的時間、背景、正在玩的一輪、換畫面時的語音、等語音念完、取消的手指和第二根手指、家長關掉的東西、過午夜的卡片、三個聲音開關、太少和太多、背景和調回去的時鐘、換地方時正在玩的一輪、阿嬤的提示不會重複、語音準備好之前的兩句、首頁的小雞排到數到幾；0.1.1 加的：返回鍵、關掉再打開接著算、家長模式和關卡自己關上、關卡等待變長、音樂排隊、360×640 的蛋盒和貨車，截圖在 `build/screenshots/small_phone/`）、`flow_test`（手機和平板、兩個難度、六個地方，截圖 31 張）、`demo/demo_video_test.dart`（`--dart-define=DEMO=true`，再 `python3 tools/demo_audio.py`）。`test/play.dart` 是測試和示範影片共用的「小朋友怎麼玩每一題」。
 
-## 目前的狀態（2026-11-15）
-- 0.1.0 已發布（2026-11-16）：Releases 有三個 APK，App 和 Release 都成功；Secrets 加好了。發布前做過程式檢查（見下一行）。
-- 2026-11-15 做過一次檢查程式（code review），修了：APP 放在背景的時間（不到十分鐘）被算進玩的時間；把手機時間調回去可以多玩；從一個地方按「去下一個地方」時，前一個地方把「正在玩的一輪」的旗子關掉，下一輪沒有先玩完的一分鐘（`RoundBusy` 改成記是哪個畫面在玩）；排排隊錯三次後阿嬤要幫忙時，小朋友自己先做完，南瓜會出錯、鴨子會走回來；語音一開始還在準備時，第二句會被第一句蓋掉、離開畫面後還在等的那句會念出來；首頁點小雞數的時候，排的小雞超過「數到幾」。家長關卡的測試有時候會失敗（隨機出題剛好是 10），改成只按 0。版本還是 0.1.0。
+## 目前的狀態（2026-11-26）
+- 0.1.0 已發布（2026-11-16）：Releases 有三個 APK，App 和 Release 都成功；Secrets 加好了。
+- **0.1.1 做好了、還沒發布**（在 `claude/relaxed-albattani-6mbwpz` 分支，推 `main` 要先問使用者）：2026-11-26 兄弟 APP 一起檢查後修的——
+  - APP 關掉 10 分鐘內再打開接著算玩的時間（存在手機裡）；家長關卡上的時間不算。
+  - 手機的返回鍵不會關掉 APP（在一個地方按回農場，農場和休息畫面沒反應）。
+  - 家長模式和家長關卡切到背景或 5 分鐘沒碰會自己關上；休息畫面解開後不會留著進家長模式的門。
+  - 家長關卡連錯等 1、5、15 分鐘，存在手機裡，時鐘調回去不會鎖住。
+  - 聲音走媒體音量（震動和靜音也聽得到）、音樂換畫面時排隊（不會放錯）、APP 在背景時阿嬤不說話、Android 11 以上找得到語音（`TTS_SERVICE`）。
+  - 不跟 Google 備份（`allowBackup`、`data_extraction_rules.xml`）；打包時多檢查相機、麥克風、聯絡人、相片的權限。
+  - 小小農夫設成數到 10，餵小雞、摘水果（最多 8）、去市場也會超過 5。
+  - 360×640 的手機上，「盒子裡有幾顆」的蛋盒不會壓扁，去市場交給阿伯的西瓜不會疊到貨車上。
 - 首頁木牌：小小農夫只寫「小雞」，不出現數字（使用者 2026-11-16 決定，`Strings.chickSign`）。
-- 還沒在真手機上試過：TTS 念數字和量詞（「兩隻小雞」「七顆蛋」）、念的速度和數數的節奏、拖東西的手感、聲音好不好聽和大小（做的時候沒辦法用耳朵聽）、木刻刀痕在小螢幕上會不會讓小朋友分心、平板上放大後的樣子。
+- 還沒在真手機上試過：TTS 念數字和量詞（「兩隻小雞」「七顆蛋」）、念的速度和數數的節奏、拖東西的手感、聲音好不好聽和大小（做的時候沒辦法用耳朵聽）、震動模式下有沒有音效和音樂、木刻刀痕在小螢幕上會不會讓小朋友分心、平板上放大後的樣子。
