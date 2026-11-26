@@ -201,8 +201,8 @@ List<Task> _chicks(Ask ask, math.Random r) {
   }
 
   if (ask.small) {
-    final hi = math.min(5, ask.maxN);
-    final a = _pick(r, 2, hi, used), b = _pick(r, 2, hi, used);
+    // As far as it counts (a parent can set 小小農夫 to count to 10).
+    final a = _pick(r, 2, ask.maxN, used), b = _pick(r, 2, ask.maxN, used);
     return [FeedTask(a, a), peek(), FeedTask(b, b), peek()];
   }
   final a = _pick(r, 3, ask.maxN, used), b = _pick(r, 3, ask.maxN, used);
@@ -238,7 +238,8 @@ List<Task> _fruit(Ask ask, math.Random r) {
   }
 
   FillTask pick() {
-    final n = _pick(r, ask.small ? 2 : 3, ask.small ? math.min(5, ask.maxN) : math.min(8, ask.maxN), used);
+    // At most 8 in the basket, whatever the level (as far as it counts).
+    final n = _pick(r, ask.small ? 2 : 3, math.min(8, ask.maxN), used);
     return FillTask(n, fruit(), n + 2 + r.nextInt(2), customer: customer());
   }
 
@@ -324,7 +325,7 @@ List<Task> _market(Ask ask, math.Random r) {
   }
 
   if (ask.small) {
-    final hi = math.min(5, ask.maxN);
+    final hi = ask.maxN;
     return [load(2, hi), load(1, hi), load(2, hi)];
   }
   final more = 2 + r.nextInt(ask.maxN - 2); // 2..maxN-1, so one more is at most maxN

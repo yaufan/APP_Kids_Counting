@@ -81,9 +81,13 @@ class _ChangeViewState extends State<ChangeView> with CountAlong {
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(builder: (context, box) {
-        final w = math.min(box.maxWidth - 16, 420.0);
+        // On a short phone (360 × 640) the cards and the truck are smaller,
+        // so 阿伯 (or the field) above the truck still has room.
+        final short = box.maxHeight < 520;
+        final cards = math.min(math.min(100.0, (box.maxWidth - 60) / 3), short ? box.maxHeight * .2 : 100.0);
+        final sentence = _h.settings.sentences ? 44.0 : 0.0;
+        final w = math.min(math.min(box.maxWidth - 16, 420.0), short ? box.maxHeight - cards - 26 - sentence : 420.0);
         final frameW = w * .66;
-        final cards = math.min(100.0, (box.maxWidth - 60) / 3);
         // The melons on the truck fill the ten-frame from the top left (one
         // sold: the rest close up, so they are still easy to count).
         final frame = TenFrame(
@@ -112,7 +116,11 @@ class _ChangeViewState extends State<ChangeView> with CountAlong {
         );
         return Column(children: [
           Expanded(
-            child: Row(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.center, children: [
+            // Shrunk whole to the room above the truck: the melon handed to
+            // 阿伯 never lands on the truck.
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.center, children: [
               if (_more)
                 Semantics(
                   key: const ValueKey('field-melon'),
@@ -136,7 +144,8 @@ class _ChangeViewState extends State<ChangeView> with CountAlong {
                 ]),
               const SizedBox(width: 10),
               const SizedBox(width: 90, height: 80, child: Art('farm/stall')),
-            ]),
+              ]),
+            ),
           ),
           SizedBox(
             width: w,

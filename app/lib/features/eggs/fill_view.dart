@@ -381,13 +381,21 @@ class _HowManyViewState extends State<HowManyView> with CountAlong {
   Widget build(BuildContext context) => LayoutBuilder(builder: (context, box) {
         final w = math.min(box.maxWidth - 24, 360.0);
         final rows = _h.ask.frame10 || _t.n > 5 ? 2 : 1;
-        final cards = math.min(104.0, (box.maxWidth - 60) / 3);
+        // On a short phone (360 × 640) the hen, the cards and the number
+        // blocks are smaller, and the box is shrunk whole (never squashed).
+        final short = box.maxHeight < 520;
+        final cards = math.min(math.min(104.0, (box.maxWidth - 60) / 3), short ? box.maxHeight * .2 : 104.0);
+        final hen = short ? math.max(56.0, box.maxHeight * .17) : 100.0;
+        final per = _t.n > 5 ? 5 : _t.n;
+        final tiles = short ? math.min(w, 5 * box.maxHeight * .085 + 8 * per) : w;
         return Column(children: [
           const SizedBox(height: 8),
-          const SizedBox(width: 110, height: 100, child: Art('animals/hen')),
+          SizedBox(width: hen * 1.1, height: hen, child: const Art('animals/hen')),
           Expanded(
             child: Center(
-              child: TenFrame(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: TenFrame(
                 rows: rows,
                 width: w,
                 item: (i, s) => i < _t.n
@@ -396,6 +404,7 @@ class _HowManyViewState extends State<HowManyView> with CountAlong {
                         if (i < _lit && _h.ask.numerals) Text('${i + 1}', style: TextStyle(fontSize: s * .38, fontWeight: FontWeight.w700, color: Inks.red)),
                       ])
                     : null,
+                ),
               ),
             ),
           ),
@@ -407,7 +416,7 @@ class _HowManyViewState extends State<HowManyView> with CountAlong {
               ),
           ]),
           const SizedBox(height: 6),
-          CountTiles(n: _t.n, lit: _lit, numerals: _h.ask.numerals, width: w),
+          CountTiles(n: _t.n, lit: _lit, numerals: _h.ask.numerals, width: tiles),
           const SizedBox(height: 4),
         ]);
       });

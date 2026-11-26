@@ -126,7 +126,7 @@ void main() {
         for (final t in round) {
           switch (t) {
             case FeedTask(:final chicks, :final corn):
-              expect(chicks, inInclusiveRange(2, a.small ? 5 : a.maxN));
+              expect(chicks, inInclusiveRange(2, a.maxN));
               expect(corn, t.short ? chicks - 1 : chicks);
               if (a.small) expect(t.short, isFalse, reason: '夠不夠 is for 小農夫');
             case PeekTask(:final n, :final choices):
@@ -173,6 +173,32 @@ void main() {
           }
         }
       });
+    });
+
+    test('小小農夫 set to count to 10 counts past five in 餵小雞, 摘水果 and 去市場 too', () {
+      for (final maxN in [5, 10]) {
+        final most = <Place, int>{};
+        for (final p in [Place.chicks, Place.fruit, Place.market]) {
+          final r = math.Random(maxN + p.index);
+          for (var i = 0; i < 200; i++) {
+            for (final t in roundFor(p, Ask(Level.small, maxN), r)) {
+              final n = switch (t) {
+                FeedTask(:final chicks) => chicks,
+                FillTask(:final target) => target,
+                _ => 0,
+              };
+              most[p] = math.max(most[p] ?? 0, n);
+            }
+          }
+        }
+        for (final p in [Place.chicks, Place.fruit, Place.market]) {
+          if (maxN == 5) {
+            expect(most[p], 5, reason: '$p counts to five');
+          } else {
+            expect(most[p], greaterThan(5), reason: '$p: a parent set it to count to 10');
+          }
+        }
+      }
     });
 
     test('the amounts to fill differ within a round', () {
